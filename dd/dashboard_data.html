@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logistics KPI Dashboard | Nassau Candy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+
+    <div class="flex">
+        <aside class="w-72 bg-slate-900 min-h-screen text-white p-6 sticky top-0 h-screen overflow-y-auto">
+            <h2 class="text-xl font-bold mb-8 text-blue-400">Nassau Analytics</h2>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="text-xs font-semibold text-slate-400 uppercase">Date Range Filter</label>
+                    <div class="space-y-2 mt-2">
+                        <input type="date" id="startDate" class="w-full bg-slate-800 border-none rounded p-2 text-sm text-white" value="2024-01-01">
+                        <input type="date" id="endDate" class="w-full bg-slate-800 border-none rounded p-2 text-sm text-white" value="2025-12-31">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-slate-400 uppercase">Region Selector</label>
+                    <select id="regionFilter" class="w-full mt-2 bg-slate-800 border-none rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 text-white">
+                        <option value="all">All Regions</option>
+                        <option value="Atlantic">Atlantic</option>
+                        <option value="Interior">Interior</option>
+                        <option value="Pacific">Pacific</option>
+                        <option value="Gulf">Gulf</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-slate-400 uppercase">Ship Mode</label>
+                    <select id="modeFilter" class="w-full mt-2 bg-slate-800 border-none rounded p-2 text-sm text-white">
+                        <option value="all">All Methods</option>
+                        <option value="Standard Class">Standard Class</option>
+                        <option value="First Class">First Class</option>
+                        <option value="Second Class">Second Class</option>
+                        <option value="Same Day">Same Day</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-slate-400 uppercase">Lead-Time Threshold</label>
+                    <input type="range" min="0" max="1500" value="1500" class="w-full mt-2 cursor-pointer" id="thresholdSlider">
+                    <div class="flex justify-between text-xs mt-1 text-slate-400">
+                        <span>Min</span>
+                        <span id="sliderVal" class="text-blue-400 font-bold">1500d</span>
+                    </div>
+                </div>
+                
+                <button onclick="updateDashboard()" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-bold transition shadow-lg">Apply Filters</button>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-8">
+            <header class="flex justify-between items-center mb-10">
+                <div>
+                    <h1 class="text-3xl font-bold">Logistics KPI Overview</h1>
+                    <p class="text-slate-500">Real-time Performance Metrics & Route Efficiency</p>
+                </div>
+                <div class="text-right">
+                    <span class="bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-sm font-semibold">Active Period: 2024-2026</span>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-slate-500 text-sm font-medium">Avg Lead Time</p>
+                    <p id="kpi-avg" class="text-2xl font-bold text-slate-800">--</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-slate-500 text-sm font-medium">Order Volume</p>
+                    <p id="kpi-vol" class="text-2xl font-bold text-slate-800">--</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <p class="text-slate-500 text-sm font-medium">Efficiency Status</p>
+                    <p id="kpi-status" class="text-2xl font-bold text-green-500">Optimal</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="font-bold mb-4 text-slate-700 uppercase text-xs tracking-widest">State-Level Performance (Lead Time vs Volume)</h3>
+                    <div class="h-80"><canvas id="efficiencyChart"></canvas></div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="font-bold mb-4 text-slate-700 uppercase text-xs tracking-widest">Avg Lead Time by Shipping Mode</h3>
+                    <div class="h-80"><canvas id="modeChart"></canvas></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Data derived from dashboard_data.json
+        // Replace this with: fetch('dashboard_data.json').then(...) for live integration
+        let dbData = { "raw": [] };
+
+        let modeChart, effChart;
+
+        async function init() {
+            // Simulated fetch - In production, use: const response = await fetch('dashboard_data.json');
+            // dbData = await response.json();
+            
+            // For now, using a small sample structure based on your data
+            dbData.raw = [
+                {OrderDateStr: '2024-03-01', Region: 'Interior', State: 'Texas', ShipMode: 'Standard Class', Lead: 909},
+                {OrderDateStr: '2024-03-05', Region: 'Atlantic', State: 'New York', ShipMode: 'First Class', Lead: 1338},
+                {OrderDateStr: '2025-06-10', Region: 'Pacific', State: 'California', ShipMode: 'Same Day', Lead: 1333},
+                {OrderDateStr: '2025-12-30', Region: 'Gulf', State: 'Florida', ShipMode: 'Standard Class', Lead: 1100}
+            ];
+            
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            const region = document.getElementById('regionFilter').value;
+            const mode = document.getElementById('modeFilter').value;
+            const threshold = parseInt(document.getElementById('thresholdSlider').value);
+
+            // Comprehensive Filtering Logic
+            const filtered = dbData.raw.filter(d => {
+                const dateMatch = (!start || d.OrderDateStr >= start) && (!end || d.OrderDateStr <= end);
+                const regionMatch = region === 'all' || d.Region === region;
+                const modeMatch = mode === 'all' || d.ShipMode === mode;
+                const thresholdMatch = d.Lead <= threshold;
+                return dateMatch && regionMatch && modeMatch && thresholdMatch;
+            });
+
+            // Update KPIs
+            const avgLead = filtered.length ? (filtered.reduce((a, b) => a + b.Lead, 0) / filtered.length).toFixed(1) : 0;
+            document.getElementById('kpi-avg').innerText = `${avgLead} Days`;
+            document.getElementById('kpi-vol').innerText = filtered.length.toLocaleString();
+            document.getElementById('kpi-status').innerText = avgLead < 1000 ? "Excellent" : (avgLead < 1300 ? "Optimal" : "Slow");
+            document.getElementById('kpi-status').className = `text-2xl font-bold ${avgLead < 1300 ? 'text-green-500' : 'text-orange-500'}`;
+
+            renderCharts(filtered);
+        }
+
+        function renderCharts(data) {
+            // Grouping for Mode Bar Chart
+            const modes = [...new Set(data.map(d => d.ShipMode))];
+            const modeValues = modes.map(m => {
+                const subset = data.filter(d => d.ShipMode === m);
+                return subset.reduce((a, b) => a + b.Lead, 0) / subset.length;
+            });
+
+            if (modeChart) modeChart.destroy();
+            modeChart = new Chart(document.getElementById('modeChart'), {
+                type: 'bar',
+                data: {
+                    labels: modes,
+                    datasets: [{ label: 'Avg Days', data: modeValues, backgroundColor: '#3b82f6', borderRadius: 5 }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+
+            // Grouping for State Bubble Chart
+            const states = [...new Set(data.map(d => d.State))];
+            const bubbleData = states.map(s => {
+                const subset = data.filter(d => d.State === s);
+                return {
+                    x: subset.reduce((a, b) => a + b.Lead, 0) / subset.length,
+                    y: subset.length,
+                    r: Math.min(subset.length / 2, 20) + 5
+                };
+            });
+
+            if (effChart) effChart.destroy();
+            effChart = new Chart(document.getElementById('efficiencyChart'), {
+                type: 'bubble',
+                data: {
+                    datasets: [{ label: 'States', data: bubbleData, backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: '#3b82f6' }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'Avg Lead Time (Days)' } },
+                        y: { title: { display: true, text: 'Total Orders' } }
+                    }
+                }
+            });
+        }
+
+        // Slider UI sync
+        document.getElementById('thresholdSlider').addEventListener('input', (e) => {
+            document.getElementById('sliderVal').innerText = e.target.value + 'd';
+        });
+
+        init();
+    </script>
+</body>
+</html>

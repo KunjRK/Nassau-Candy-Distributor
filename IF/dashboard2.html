@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<style>
+    /* Executive Color Palette */
+    :root {
+        --primary-navy: #1a237e;
+        --accent-blue: #3949ab;
+        --bg-light: #f4f7f9;
+        --text-dark: #2c3e50;
+    }
+
+    body {
+        background-color: var(--bg-light);
+        color: var(--text-dark);
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Sidebar Styling */
+    .sidebar {
+        min-height: 100vh;
+        background: white;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        z-index: 100;
+    }
+
+    .sidebar h5 {
+        color: var(--primary-navy);
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+        margin-bottom: 1.5rem;
+    }
+
+    /* KPI Card Enhancements */
+    .card {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.2s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-3px);
+    }
+
+    .kpi-card {
+        background: white;
+        border-bottom: 4px solid var(--accent-blue);
+    }
+
+    .kpi-card small {
+        color: #7f8c8d;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .kpi-card h2 {
+        color: var(--primary-navy);
+        margin-top: 10px;
+    }
+
+    /* Table Styling */
+    .table thead th {
+        background-color: #f8f9fa;
+        color: var(--primary-navy);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        border-top: none;
+    }
+
+    .table-responsive {
+        border-radius: 8px;
+        scrollbar-width: thin;
+    }
+
+    /* Filter Controls */
+    .form-range::-webkit-slider-thumb {
+        background: var(--primary-navy);
+    }
+
+    .btn-primary {
+        background-color: var(--primary-navy);
+        border: none;
+        font-weight: 600;
+        padding: 10px;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--accent-blue);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-2 d-none d-md-block sidebar p-4">
+            <h5>Dashboard Filters</h5>
+            <form method="GET">
+                <div class="mb-4">
+                    <label class="form-label d-flex justify-content-between">
+                        <span>Threshold</span>
+                        <span class="badge bg-light text-dark border" id="t_val">{{ threshold }} days</span>
+                    </label>
+                    <input type="range" name="threshold" class="form-range" min="1" max="14" 
+                           value="{{ threshold }}" oninput="document.getElementById('t_val').innerText=this.value + ' days'">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label">Regional View</label>
+                    <select name="region" class="form-select shadow-sm">
+                        <option {% if request.GET.region == 'All' %}selected{% endif %}>All</option>
+                        <option {% if request.GET.region == 'West' %}selected{% endif %}>West</option>
+                        <option {% if request.GET.region == 'East' %}selected{% endif %}>East</option>
+                        <option {% if request.GET.region == 'Central' %}selected{% endif %}>Central</option>
+                        <option {% if request.GET.region == 'South' %}selected{% endif %}>South</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Ship Mode</label>
+                    <select name="mode" class="form-select shadow-sm">
+                        <option value="All">All Methods</option>
+                        <option value="Standard Class">Standard Class</option>
+                        <option value="First Class">First Class</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary w-100 shadow-sm mt-2">
+                    <i class="bi bi-filter"></i> Apply Analysis
+                </button>
+            </form>
+        </nav>
+
+        <main class="col-md-10 px-md-4 py-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+                <h1 class="h2 fw-bold" style="color: var(--primary-navy);">Route Efficiency Overview</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-2">Export PDF</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Share Report</button>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card p-4 text-center shadow-sm kpi-card">
+                        <small>TOTAL ROUTE VOLUME</small>
+                        <h2 class="fw-bold">{{ total_volume }}</h2>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card p-4 text-center shadow-sm kpi-card" style="border-bottom-color: #e74c3c;">
+                        <small>DELAY FREQUENCY</small>
+                        <h2 class="text-danger fw-bold">{{ delay_freq|floatformat:1 }}%</h2>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card p-4 text-center shadow-sm kpi-card" style="border-bottom-color: #2ecc71;">
+                        <small>EFFICIENCY SCORE</small>
+                        <h2 class="text-success fw-bold">94.2</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-5 mb-4">
+                    <div class="card shadow-sm p-4 h-100">
+                        <h5 class="fw-bold mb-3">Route Performance Leaderboard</h5>
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr><th>Route</th><th>Avg Lead Time</th><th>Orders</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for route in route_stats|slice:":5" %}
+                                <tr>
+                                    <td class="fw-semibold">{{ route.route }}</td>
+                                    <td><span class="badge bg-soft-primary text-dark">{{ route.avg_lt }} days</span></td>
+                                    <td>{{ route.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-lg-7 mb-4">
+                    <div class="card shadow-sm p-4 h-100">
+                        <h5 class="fw-bold mb-3">Order-level Shipment Timelines</h5>
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table class="table table-sm table-striped">
+                                <thead class="sticky-top bg-white">
+                                    <tr><th>ID</th><th>State</th><th>Mode</th><th>Lead Time</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in shipments %}
+                                    <tr>
+                                        <td class="text-muted">#{{ s.order_id|slice:"-5:" }}</td>
+                                        <td>{{ s.state }}</td>
+                                        <td><small>{{ s.ship_mode }}</small></td>
+                                        <td>
+                                            {% if s.lead_time > threshold %}
+                                                <span class="text-danger">●</span>
+                                            {% else %}
+                                                <span class="text-success">●</span>
+                                            {% endif %}
+                                            {{ s.lead_time }}d
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+import pandas as pd
+import json
+
+# Load and clean
+df = pd.read_csv('Nassau Candy Distributor.csv')
+df['Order Date'] = pd.to_datetime(df['Order Date'], dayfirst=True)
+df['Ship Date'] = pd.to_datetime(df['Ship Date'], dayfirst=True)
+df['Lead Time'] = (df['Ship Date'] - df['Order Date']).dt.days
+
+# Select and format columns for the dashboard
+dashboard_df = df[['Order Date', 'Region', 'State/Province', 'Ship Mode', 'Lead Time']].copy()
+dashboard_df['OrderDateStr'] = dashboard_df['Order Date'].dt.strftime('%Y-%m-%d')
+dashboard_df = dashboard_df.rename(columns={'State/Province': 'State'})
+
+# Create JSON structure
+data_to_save = {
+    "min_date": dashboard_df['OrderDateStr'].min(),
+    "max_date": dashboard_df['OrderDateStr'].max(),
+    "raw": dashboard_df[['OrderDateStr', 'Region', 'State', 'Ship Mode', 'Lead Time']].to_dict(orient='records')
+}
+
+with open('dashboard_data.json', 'w') as f:
+    json.dump(data_to_save, f)
